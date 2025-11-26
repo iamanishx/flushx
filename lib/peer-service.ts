@@ -11,6 +11,7 @@ export class PeerService {
     public onFileReceived?: (file: File) => void;
     public onConnectionStateChange?: (state: RTCPeerConnectionState) => void;
     public onIceCandidate?: (candidate: RTCIceCandidateInit) => void;
+    public onDataChannelOpen?: () => void;
 
     async initialize(isOfferer: boolean): Promise<void> {
         const config: RTCConfiguration = {
@@ -62,6 +63,7 @@ export class PeerService {
         if (!this.dataChannel) return;
         this.dataChannel.onopen = () => {
             console.log('Data channel opened');
+            this.onDataChannelOpen?.();
         };
         this.dataChannel.onmessage = (event) => {
             if (typeof event.data === 'string') {

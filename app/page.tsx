@@ -18,17 +18,28 @@ export default function Home() {
     peer.onConnectionStateChange = (state) => {
       setConnectionState(state);
       if (state === 'connected') {
-        setStatus('Connected! Sending file...');
+        setStatus('Connected! Preparing to send...');
       }
     };
     peer.onFileProgress = (prog) => {
       setProgress(prog);
     };
+    peer.onDataChannelOpen = () => {
+      setStatus('Data channel ready! Sending file...');
+      if (file) {
+        setTimeout(() => {
+          peer.sendFile(file).catch(err => {
+            console.error('Send file error:', err);
+            setStatus('Error sending file');
+          });
+        }, 100);
+      }
+    };
 
     return () => {
       peer.cleanup();
     };
-  }, [peer]);
+  }, [peer, file]);
 
   const handleFileSelect = async (selectedFile: File) => {
     setFile(selectedFile);
@@ -83,14 +94,7 @@ export default function Home() {
             await peer.addIceCandidate(candidate);
           }
 
-          setStatus('Connected! Waiting to send...');
-
-          // Wait for connection to be fully established
-          setTimeout(() => {
-            if (file) {
-              peer.sendFile(file);
-            }
-          }, 1000);
+          setStatus('Connected! Waiting for data channel...');
         }
       } catch (error) {
         console.error('Polling error:', error);
