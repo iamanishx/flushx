@@ -96,23 +96,47 @@ export class PeerService {
         if (!this.dataChannel || this.dataChannel.readyState !== 'open') {
             throw new Error('Data channel not ready');
         }
+
         const metadata = {
             fileName: file.name,
             fileSize: file.size,
         };
         this.dataChannel.send(JSON.stringify(metadata));
+
         const chunkSize = 16384;
+        const maxBufferedAmount = 256 * 1024;
         let offset = 0;
+
         const readChunk = async (): Promise<void> => {
+            while (this.dataChannel && this.dataChannel.bufferedAmount > maxBufferedAmount) {
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+
+            if (!this.dataChannel || this.dataChannel.readyState !== 'open') {
+                throw new Error('Data channel closed during transfer');
+            }
+
             const chunk = file.slice(offset, offset + chunkSize);
             const buffer = await chunk.arrayBuffer();
 
-            this.dataChannel!.send(buffer);
+            let attempts = 0;
+            while (attempts < 10) {
+                try {
+                    this.dataChannel.send(buffer);
+                    break;
+                } catch (error) {
+                    attempts++;
+                    if (attempts >= 10) throw error;
+                    await new Promise(resolve => setTimeout(resolve, 100 * attempts));
+                }
+            }
+
             offset += buffer.byteLength;
             const progress = (offset / file.size) * 100;
             this.onFileProgress?.(progress);
+
             if (offset < file.size) {
-                setTimeout(readChunk, 0); // Non-blocking
+                setTimeout(readChunk, 0);
             }
         };
         await readChunk();
