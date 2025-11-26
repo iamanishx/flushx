@@ -32,7 +32,7 @@ export default function RootLayout({
             <div className="flex items-center gap-2">
               <span className="font-bold text-xl tracking-tight">FlushX</span>
             </div>
-            <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors text-sm">
+            <a href="https://github.com/iamanishx/flushx" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors text-sm">
               GitHub
             </a>
           </div>
