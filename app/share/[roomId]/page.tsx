@@ -13,6 +13,7 @@ export default function ReceivePage({ params }: { params: Promise<{ roomId: stri
     const [progress, setProgress] = useState<number>(0);
     const [receivedFile, setReceivedFile] = useState<File | null>(null);
     const [connectionState, setConnectionState] = useState<string>('new');
+    const [downloadReady, setDownloadReady] = useState<{ url: string; filename: string } | null>(null);
 
     useEffect(() => {
         connectToPeer();
@@ -33,13 +34,23 @@ export default function ReceivePage({ params }: { params: Promise<{ roomId: stri
             setReceivedFile(file);
             setStatus('File received!');
 
-            // Auto-download
             const url = URL.createObjectURL(file);
             const a = document.createElement('a');
             a.href = url;
             a.download = file.name;
-            a.click();
-            URL.revokeObjectURL(url);
+
+            document.body.appendChild(a);
+            a.style.display = 'none';
+
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+            if (isIOS) {
+                setDownloadReady({ url, filename: file.name });
+            } else {
+                a.click();
+                URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            }
         };
 
         return () => {
@@ -49,7 +60,6 @@ export default function ReceivePage({ params }: { params: Promise<{ roomId: stri
 
     const connectToPeer = async () => {
         try {
-            // Get room data
             const response = await fetch(`/api/rooms/${roomId}`);
             const data = await response.json();
 
@@ -137,6 +147,29 @@ export default function ReceivePage({ params }: { params: Promise<{ roomId: stri
                             </p>
                         </div>
                     </div>
+                )}
+
+                {downloadReady && (
+                    <a
+                        href={downloadReady.url}
+                        download={downloadReady.filename}
+                        className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 border border-blue-500/20 shadow-lg shadow-blue-900/20"
+                    >
+                        <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                            />
+                        </svg>
+                        Tap to Download {downloadReady.filename}
+                    </a>
                 )}
             </div>
         </div>

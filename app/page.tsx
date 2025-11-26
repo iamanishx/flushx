@@ -14,6 +14,7 @@ export default function Home() {
   const [status, setStatus] = useState<string>('Select a file to share');
   const [progress, setProgress] = useState<number>(0);
   const [connectionState, setConnectionState] = useState<string>('new');
+  const [copied, setCopied] = useState<boolean>(false);
 
   useEffect(() => {
     peer.onConnectionStateChange = (state) => {
@@ -48,17 +49,13 @@ export default function Home() {
     setStatus('Initializing...');
 
     try {
-      // Initialize peer connection
       await peer.initialize(true);
 
-      // Create offer
       const offer = await peer.createOffer();
       const iceCandidates = peer.getIceCandidates();
 
-      // Wait a bit for ICE candidates
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Create room
       const response = await fetch('/api/rooms/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -73,7 +70,6 @@ export default function Home() {
       setShareLink(link);
       setStatus('Share the link below');
 
-      // Poll for answer
       pollForAnswer(roomId);
     } catch (error) {
       console.error('Error:', error);
@@ -91,7 +87,6 @@ export default function Home() {
           clearInterval(interval);
           await peer.setRemoteAnswer(data.answer);
 
-          // Add answer ICE candidates
           for (const candidate of data.answerCandidates || []) {
             await peer.addIceCandidate(candidate);
           }
@@ -103,8 +98,32 @@ export default function Home() {
       }
     }, 2000);
 
-    // Stop polling after 5 minutes
     setTimeout(() => clearInterval(interval), 5 * 60 * 1000);
+  };
+
+  const copyToClipboard = async () => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(shareLink);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = shareLink;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        textArea.remove();
+      }
+
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+      alert('Failed to copy link. Please copy manually.');
+    }
   };
 
   return (
@@ -142,10 +161,10 @@ export default function Home() {
                 className="flex-1 px-4 py-2 bg-gray-900 rounded-lg border border-gray-800 text-sm text-gray-300 outline-none focus:border-white transition-colors font-mono"
               />
               <button
-                onClick={() => navigator.clipboard.writeText(shareLink)}
+                onClick={copyToClipboard}
                 className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm"
               >
-                Copy
+                {copied ? 'Copied!' : 'Copy'}
               </button>
             </div>
           </div>
