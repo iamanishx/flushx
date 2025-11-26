@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { PeerService } from '@/lib/peer-service';
 import { FileUploader } from '@/components/FileUploader';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
@@ -9,6 +9,7 @@ import { TransferProgress } from '@/components/TransferProgress';
 export default function Home() {
   const [peer] = useState(() => new PeerService());
   const [file, setFile] = useState<File | null>(null);
+  const fileRef = useRef<File | null>(null);
   const [shareLink, setShareLink] = useState<string>('');
   const [status, setStatus] = useState<string>('Select a file to share');
   const [progress, setProgress] = useState<number>(0);
@@ -26,9 +27,9 @@ export default function Home() {
     };
     peer.onDataChannelOpen = () => {
       setStatus('Data channel ready! Sending file...');
-      if (file) {
+      if (fileRef.current) {
         setTimeout(() => {
-          peer.sendFile(file).catch(err => {
+          peer.sendFile(fileRef.current!).catch(err => {
             console.error('Send file error:', err);
             setStatus('Error sending file');
           });
@@ -39,10 +40,11 @@ export default function Home() {
     return () => {
       peer.cleanup();
     };
-  }, [peer, file]);
+  }, [peer]);
 
   const handleFileSelect = async (selectedFile: File) => {
     setFile(selectedFile);
+    fileRef.current = selectedFile;
     setStatus('Initializing...');
 
     try {
